@@ -63,10 +63,17 @@ export class DbService {
   public async query(sql: string, params: any[] = []): Promise<any[]> {
     const conn = await this.connect()
     try {
-      const result = await conn.query(sql, params)
+      console.log('执行SQL:', sql)
+      console.log('参数:', params)
+      const result =
+        params.length > 0
+          ? await conn.query(sql, params)
+          : await conn.query(sql)
       return result
     } catch (error) {
       console.error('查询执行失败:', error)
+      console.error('SQL:', sql)
+      console.error('参数:', params)
       throw error
     }
   }

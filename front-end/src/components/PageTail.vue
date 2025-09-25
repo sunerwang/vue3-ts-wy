@@ -30,7 +30,9 @@ const routes = ref([
   { path: '/users', name: '用户管理' },
   { path: '/stats', name: '数据统计' },
   { path: '/settings', name: '系统设置' },
-  { path: '/PageTest07', name: 'PageTest07' }
+  { path: '/PageTest07', name: 'PageTest07' },
+  { path: '/RealTimeDashboard', name: 'RealTimeDashboard' },
+  { path: '/UserStatusMonitor', name: 'UserStatusMonitor' }
 ])
 
 // 当前路由

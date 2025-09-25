@@ -286,6 +286,42 @@ interface SelectOption {
   label: string
 }
 
+interface RollingPerformanceData {
+  'L2坯料号\n': string
+  成品规格: number
+  钢种: string
+  打捆用时: number | null
+  打捆档位: number
+  打捆时间: string
+  打捆卷长: number
+  实绩处理区分: string
+  '轧制计划号\n': string
+  '材料号\n': string
+  'PONO号\n': string
+  轧制生产班次: string
+  轧制生产班组: string
+  轧制生产时刻: string
+  '轧制生产责任者\n': string
+  ROLL_START_TIME: string
+  ROLL_END_TIME: string
+  轧制时间: number
+  入口材料长度: number
+  入口材料实际重量: number
+  材料实际厚度: number
+  材料实际宽度: number
+  材料实际长度: number
+  材料实际内径: number
+  材料实际外径: number
+  轧制根数: number
+  轧制实际重量: number
+  轧制理论重量: number
+}
+
+interface ApiResponse {
+  success: boolean
+  data: RollingPerformanceData[]
+}
+
 // 响应式数据
 const search = reactive<SearchParams>({
   checkDate: false,
@@ -336,9 +372,6 @@ const clickedButtonName = ref('')
 const isSearching = ref(false)
 const multipleSelection = ref<any>(null)
 
-// 计算属性
-// 可以添加需要的计算属性
-
 // 方法
 const showMessageTips = (titleName: string, messageInfo: string) => {
   ElMessageBox.alert(messageInfo, titleName, {
@@ -346,13 +379,19 @@ const showMessageTips = (titleName: string, messageInfo: string) => {
   })
 }
 
-const renderHeader = (h: any, { column, $index }: any) => {
+const renderHeader = (params?: any) => {
+  if (!params || !params.column) {
+    // 参数异常时返回默认内容
+    return ''
+  }
+  const { column } = params
+  // 计算最小宽度逻辑可保留
   const span = document.createElement('span')
   span.innerText = column.label
   document.body.appendChild(span)
   column.minWidth = span.getBoundingClientRect().width + 50
   document.body.removeChild(span)
-  return h('span', column.label)
+  return column.label
 }
 
 const planDetailTableClick = (val: any) => {
@@ -445,9 +484,37 @@ const timeFormat = (
   return moment(cellValue).format('YYYY-MM-DD HH:mm:ss')
 }
 
+// API调用函数
+const fetchRollingPerformanceData = async (): Promise<
+  RollingPerformanceData[]
+> => {
+  try {
+    const response = await fetch(
+      'http://localhost:3001/api/rolling-performance'
+    )
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result: ApiResponse = await response.json()
+
+    if (result.success && result.data) {
+      return result.data
+    } else {
+      throw new Error('API返回数据格式错误')
+    }
+  } catch (error) {
+    console.error('获取数据失败:', error)
+    throw error
+  }
+}
+
 const getPlanDetailActualData = async () => {
-  const checkResult = checkTimeInRange(search.starDate, search.endDate, 1, 7)
-  if (!checkResult) return
+  if (search.checkDate) {
+    const checkResult = checkTimeInRange(search.starDate, search.endDate, 1, 7)
+    if (!checkResult) return
+  }
 
   if (isSearching.value) {
     showMessageTips('信息', '正在查询，请稍候再点击！')
@@ -458,25 +525,71 @@ const getPlanDetailActualData = async () => {
   clickedButtonName.value = '1'
 
   try {
-    // 这里替换为实际的API调用
-    // const response = await axios.post('/api/LH/CB/GetPlanDetailActualData', search);
-    // planDetailTableData.value = response.data;
-
-    // 模拟数据
-    planDetailTableData.value = []
+    // 调用API获取数据
+    const data = await fetchRollingPerformanceData()
+    planDetailTableData.value = data
     currentPage.value = 1
 
+    // 设置表格列配置
     planDetailTableConfig.value = [
-      { label: 'L2坯料号', prop: 'L2坯料号', width: 140 },
-      { label: '轧制计划号', prop: '轧制计划号' }
-      // ... 其他列配置
+      { label: 'L2坯料号', prop: 'L2坯料号\n', width: 140 },
+      { label: '轧制计划号', prop: '轧制计划号\n', width: 120 },
+      { label: '材料号', prop: '材料号\n', width: 120 },
+      { label: 'PONO号', prop: 'PONO号\n', width: 100 },
+      { label: '成品规格', prop: '成品规格', width: 100 },
+      { label: '钢种', prop: '钢种', width: 100 },
+      { label: '轧制生产班次', prop: '轧制生产班次', width: 120 },
+      { label: '轧制生产班组', prop: '轧制生产班组', width: 120 },
+      {
+        label: '轧制生产时刻',
+        prop: '轧制生产时刻',
+        width: 160,
+        formatter: timeFormat
+      },
+      { label: '轧制生产责任者', prop: '轧制生产责任者\n', width: 120 },
+      {
+        label: '轧制开始时间',
+        prop: 'ROLL_START_TIME',
+        width: 160,
+        formatter: timeFormat
+      },
+      {
+        label: '轧制结束时间',
+        prop: 'ROLL_END_TIME',
+        width: 160,
+        formatter: timeFormat
+      },
+      { label: '轧制时间(秒)', prop: '轧制时间', width: 120 },
+      { label: '入口材料长度', prop: '入口材料长度', width: 120 },
+      { label: '入口材料实际重量', prop: '入口材料实际重量', width: 140 },
+      { label: '轧制实际重量', prop: '轧制实际重量', width: 120 },
+      { label: '轧制理论重量', prop: '轧制理论重量', width: 120 },
+      { label: '轧制根数', prop: '轧制根数', width: 100 }
     ]
 
+    // 设置导出数据
     excelOutType.value = '1'
-    excelOutData.value = [['L2坯料号', '轧制计划号' /* ... 其他列头 */]]
+    if (data.length > 0) {
+      // 获取所有列头
+      const headers = planDetailTableConfig.value.map((config) => config.label)
+      excelOutData.value = [headers]
+
+      // 添加数据行
+      data.forEach((item) => {
+        const row = planDetailTableConfig.value.map((config) => {
+          const prop = config.prop as keyof RollingPerformanceData
+          return item[prop] || ''
+        })
+        excelOutData.value.push(row)
+      })
+    } else {
+      excelOutData.value = []
+    }
+
+    ElMessage.success(`查询成功，共 ${data.length} 条数据`)
   } catch (error) {
     console.error('查询失败:', error)
-    ElMessage.error('查询失败')
+    ElMessage.error('查询失败，请检查网络连接或API服务')
   } finally {
     isSearching.value = false
   }
@@ -492,21 +605,47 @@ const getRollScrapActualData = async () => {
   clickedButtonName.value = '2'
 
   try {
-    // API调用代码
-    planDetailTableData.value = []
+    // 这里可以根据需要调用不同的API，暂时使用相同的API
+    const data = await fetchRollingPerformanceData()
+    planDetailTableData.value = data
     currentPage.value = 1
 
+    // 设置轧废查询的表格列配置
     planDetailTableConfig.value = [
-      { label: '操作类型', prop: '操作类型', width: 100 },
-      { label: '坯料号', prop: '坯料号', width: 140 }
-      // ... 其他列配置
+      { label: 'L2坯料号', prop: 'L2坯料号\n', width: 140 },
+      { label: '轧制计划号', prop: '轧制计划号\n', width: 120 },
+      { label: '钢种', prop: '钢种', width: 100 },
+      {
+        label: '轧制生产时刻',
+        prop: '轧制生产时刻',
+        width: 160,
+        formatter: timeFormat
+      },
+      { label: '轧制时间(秒)', prop: '轧制时间', width: 120 },
+      { label: '轧制实际重量', prop: '轧制实际重量', width: 120 },
+      { label: '实绩处理区分', prop: '实绩处理区分', width: 120 }
     ]
 
     excelOutType.value = '2'
-    excelOutData.value = [['操作类型', '坯料号' /* ... 其他列头 */]]
+    if (data.length > 0) {
+      const headers = planDetailTableConfig.value.map((config) => config.label)
+      excelOutData.value = [headers]
+
+      data.forEach((item) => {
+        const row = planDetailTableConfig.value.map((config) => {
+          const prop = config.prop as keyof RollingPerformanceData
+          return item[prop] || ''
+        })
+        excelOutData.value.push(row)
+      })
+    } else {
+      excelOutData.value = []
+    }
+
+    ElMessage.success(`轧废查询成功，共 ${data.length} 条数据`)
   } catch (error) {
-    console.error('查询失败:', error)
-    ElMessage.error('查询失败')
+    console.error('轧废查询失败:', error)
+    ElMessage.error('轧废查询失败')
   } finally {
     isSearching.value = false
   }
@@ -522,31 +661,54 @@ const getShiftMatrTotalActualData = async () => {
   clickedButtonName.value = '3'
 
   try {
-    const paramsJson = {
-      startDate: search.starDate,
-      endDate: search.endDate,
-      shiftGroup: search.shiftGroup,
-      shiftNo: search.shiftNo,
-      rollPlanNo: search.rollPlanNo || '',
-      matNo: search.matNo || '',
-      totalType: 1
-    }
+    // 班产统计 - 可以使用相同的API，在前端进行数据聚合
+    const data = await fetchRollingPerformanceData()
 
-    // API调用代码
-    planDetailTableData.value = []
+    // 简单示例：按班次分组统计
+    const shiftStats = data.reduce((acc, item) => {
+      const shift = item.轧制生产班次
+      if (!acc[shift]) {
+        acc[shift] = {
+          班次: shift,
+          生产数量: 0,
+          总重量: 0,
+          平均轧制时间: 0
+        }
+      }
+      acc[shift].生产数量 += 1
+      acc[shift].总重量 += item.轧制实际重量
+      return acc
+    }, {} as any)
+
+    planDetailTableData.value = Object.values(shiftStats)
     currentPage.value = 1
 
     planDetailTableConfig.value = [
-      { label: '日期', prop: '日期', width: 250 },
-      { label: '班次', prop: '班次', width: 150 }
-      // ... 其他列配置
+      { label: '班次', prop: '班次', width: 100 },
+      { label: '生产数量', prop: '生产数量', width: 100 },
+      { label: '总重量(kg)', prop: '总重量', width: 120 },
+      { label: '平均轧制时间(秒)', prop: '平均轧制时间', width: 140 }
     ]
 
     excelOutType.value = '3'
-    excelOutData.value = [['日期', '班次' /* ... 其他列头 */]]
+    if (planDetailTableData.value.length > 0) {
+      const headers = planDetailTableConfig.value.map((config) => config.label)
+      excelOutData.value = [headers]
+
+      planDetailTableData.value.forEach((item) => {
+        const row = planDetailTableConfig.value.map((config) => {
+          return item[config.prop] || ''
+        })
+        excelOutData.value.push(row)
+      })
+    } else {
+      excelOutData.value = []
+    }
+
+    ElMessage.success('班产统计查询成功')
   } catch (error) {
-    console.error('查询失败:', error)
-    ElMessage.error('查询失败')
+    console.error('班产统计查询失败:', error)
+    ElMessage.error('班产统计查询失败')
   } finally {
     isSearching.value = false
   }
@@ -562,31 +724,54 @@ const getMonthMatrTotalActualData = async () => {
   clickedButtonName.value = '4'
 
   try {
-    const paramsJson = {
-      startDate: search.starDate,
-      endDate: search.endDate,
-      shiftGroup: search.shiftGroup,
-      shiftNo: search.shiftNo,
-      rollPlanNo: search.rollPlanNo || '',
-      matNo: search.matNo || '',
-      totalType: 2
-    }
+    // 月产统计 - 可以使用相同的API，在前端进行数据聚合
+    const data = await fetchRollingPerformanceData()
 
-    // API调用代码
-    planDetailTableData.value = []
+    // 简单示例：按月份分组统计
+    const monthStats = data.reduce((acc, item) => {
+      const date = new Date(item.轧制生产时刻)
+      const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`
+
+      if (!acc[monthKey]) {
+        acc[monthKey] = {
+          月份: monthKey,
+          生产数量: 0,
+          总重量: 0
+        }
+      }
+      acc[monthKey].生产数量 += 1
+      acc[monthKey].总重量 += item.轧制实际重量
+      return acc
+    }, {} as any)
+
+    planDetailTableData.value = Object.values(monthStats)
     currentPage.value = 1
 
     planDetailTableConfig.value = [
-      { label: '日期', prop: '日期', width: 250 },
-      { label: '班组', prop: '班组', width: 150 }
-      // ... 其他列配置
+      { label: '月份', prop: '月份', width: 100 },
+      { label: '生产数量', prop: '生产数量', width: 100 },
+      { label: '总重量(kg)', prop: '总重量', width: 120 }
     ]
 
     excelOutType.value = '4'
-    excelOutData.value = [['日期', '班组' /* ... 其他列头 */]]
+    if (planDetailTableData.value.length > 0) {
+      const headers = planDetailTableConfig.value.map((config) => config.label)
+      excelOutData.value = [headers]
+
+      planDetailTableData.value.forEach((item) => {
+        const row = planDetailTableConfig.value.map((config) => {
+          return item[config.prop] || ''
+        })
+        excelOutData.value.push(row)
+      })
+    } else {
+      excelOutData.value = []
+    }
+
+    ElMessage.success('月产统计查询成功')
   } catch (error) {
-    console.error('查询失败:', error)
-    ElMessage.error('查询失败')
+    console.error('月产统计查询失败:', error)
+    ElMessage.error('月产统计查询失败')
   } finally {
     isSearching.value = false
   }
@@ -662,6 +847,7 @@ const handleExcel = (outType: string) => {
     }
 
     openDownloadDialog(sheet2blob(sheet), fileName)
+    ElMessage.success('导出成功')
   } catch (error) {
     console.error('导出失败:', error)
     ElMessage.error('导出失败')
@@ -691,11 +877,13 @@ const btnSendToL3 = (outType: string, matNo: string) => {
 
 // 生命周期
 onMounted(() => {
-  // 初始化操作
+  // 初始化操作 - 可以在这里加载初始数据
+  // getPlanDetailActualData()
 })
 </script>
 
 <style scoped>
+/* 原有的样式保持不变 */
 html,
 body {
   background-color: #c6ffff;

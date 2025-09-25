@@ -26,6 +26,16 @@ const routes: Array<RouteRecordRaw> = [
     path: '/PageTest07',
     name: 'PageTest07',
     component: () => import('../views/PageTest07.vue')
+  },
+  {
+    path: '/RealTimeDashboard',
+    name: 'RealTimeDashboard',
+    component: () => import('../views/RealTimeDashboard.vue')
+  },
+  {
+    path: '/UserStatusMonitor',
+    name: 'UserStatusMonitor',
+    component: () => import('../views/UserStatusMonitor.vue')
   }
 ]
 
